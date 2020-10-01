@@ -1,38 +1,38 @@
-@file:Suppress("MemberVisibilityCanBePrivate")
+@file:Suppress("ProtectedInFinal", "MemberVisibilityCanBePrivate")
 
 package com.binzeefox.kt_foxframe.core.base
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.util.SparseArray
 import android.util.SparseBooleanArray
+import android.view.LayoutInflater
 import android.view.View
-import android.view.WindowManager
-import androidx.appcompat.app.AppCompatActivity
-import com.binzeefox.kt_foxframe.core.FoxCore
+import android.view.ViewGroup
+import androidx.fragment.app.Fragment
 import com.binzeefox.kt_foxframe.tools.navigate.Navigator
 import com.binzeefox.kt_foxframe.tools.perform.LayoutTool
-import com.binzeefox.kt_foxframe.tools.utils.RxUtil.Companion.setThreadComputation
+import com.binzeefox.kt_foxframe.tools.utils.RxUtil.setThreadComputation
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.CoroutineContext
 
 /**
- * 活动基类
+ * 碎片基类
  *
  * @author 狐彻
- * 2020/09/25 9:58
+ * 2020/09/25 13:42
  */
-abstract class FoxActivity : AppCompatActivity(), CoroutineScope {
+abstract class FoxFragment : Fragment {
 
-    // Rx回收器，全部用RxJava3
-    // @author 狐彻 2020/09/25 10:01
+    // 构造器
+    // @author 狐彻 2020/09/25 13:46
+    constructor() : super()
+    constructor(contentLayoutId: Int) : super(contentLayoutId)
+
+    // Rx回收器
+    // @author 狐彻 2020/09/25 13:46
     protected var dContainer = CompositeDisposable()
 
     // 二次点击判断相关
@@ -40,37 +40,27 @@ abstract class FoxActivity : AppCompatActivity(), CoroutineScope {
     private val mTimerQueue = SparseArray<Disposable>()
     private val mFlagQueue = SparseBooleanArray()
 
-    // 上页面的数据
-    // @author 狐彻 2020/09/25 11:34
-    val dataFromNavigate: Bundle get() = Navigator.getDataFromNavigate(intent)
+    // 主视图
+    // @author 狐彻 2020/09/25 13:50
+    var root: View? = null
 
     // 视图工具
     // @author 狐彻 2020/09/25 13:33
-    val layoutTool: LayoutTool get() = object : LayoutTool() {
-        override fun <T : View> findView(id: Int): T? = findViewById(id)
+    val layoutTool: LayoutTool
+        get() = object : LayoutTool() {
+        override fun <T : View> findView(id: Int): T? = view?.findViewById(id)
     }
-
-    ///////////////////////////////////////////////////////////////////////////
-    // 实现协程接口
-    ///////////////////////////////////////////////////////////////////////////
-
-    // 协程
-    // @author 狐彻 2020/09/25 22:02
-    private lateinit var job: Job
-
-    override val coroutineContext: CoroutineContext
-        get() = Dispatchers.Main + job
 
     ///////////////////////////////////////////////////////////////////////////
     // 抽象方法
     ///////////////////////////////////////////////////////////////////////////
 
     /**
-     * 接管的onCreate实现方法
+     * 接管的onCreateView实现
      *
-     * @author 狐彻 2020/09/25 10:27
+     * @author 狐彻 2020/09/25 13:48
      */
-    protected abstract fun create(savedInstanceState: Bundle?)
+    protected abstract fun create(root: View?, savedInstanceState: Bundle?)
 
     ///////////////////////////////////////////////////////////////////////////
     // 空实现继承方法
@@ -88,7 +78,7 @@ abstract class FoxActivity : AppCompatActivity(), CoroutineScope {
      *
      * @author 狐彻 2020/09/25 10:14
      */
-    protected open fun onSetLayoutView(): View? = null
+    protected open fun onSetLayoutView(layoutInflater: LayoutInflater, container: ViewGroup?): View? = null
 
     /**
      * onCreate中加载布局之前的回调
@@ -102,27 +92,26 @@ abstract class FoxActivity : AppCompatActivity(), CoroutineScope {
     ///////////////////////////////////////////////////////////////////////////
 
     /**
-     * onCreate接管
+     * 创建页面
      *
-     * @author 狐彻 2020/09/25 10:15
+     * @author 狐彻 2020/09/25 13:49
      */
-    final override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        job = Job()
+    final override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         beforeInflate(savedInstanceState)
-        FoxCore.instance.activityStack.push(this)   //注册模拟返回栈
-
-        //加载布局
-        if (onSetLayoutView() != null) setContentView(onSetLayoutView())
-        else setContentView(onSetLayoutResource())
-
-        create(savedInstanceState)
+        root = onSetLayoutView(layoutInflater, container)
+            ?: inflater.inflate(onSetLayoutResource(), container, false)
+        create(root, savedInstanceState)
+        return root
     }
 
     /**
      * 生命周期 onResume
      *
-     * @author 狐彻 2020/09/25 10:28
+     * @author 狐彻 2020/09/25 13:53
      */
     override fun onResume() {
         super.onResume()
@@ -136,31 +125,15 @@ abstract class FoxActivity : AppCompatActivity(), CoroutineScope {
      */
     override fun onDestroy() {
         super.onDestroy()
-        FoxCore.instance.activityStack.remove(this) //注销模拟返回栈
         if (!dContainer.isDisposed) {
             dContainer.dispose()
             dContainer.clear()
         }
-        job.cancel()
     }
 
     ///////////////////////////////////////////////////////////////////////////
     // 工具方法
     ///////////////////////////////////////////////////////////////////////////
-
-    /**
-     * 设置全屏
-     *
-     * @author 狐彻 2020/09/25 10:31
-     */
-    fun fullScreen() {
-        val decorView = window.decorView
-        val option: Int =
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-        decorView.systemUiVisibility = option
-        window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
-        window.statusBarColor = Color.TRANSPARENT
-    }
 
     /**
      * 跳转

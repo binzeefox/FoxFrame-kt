@@ -4,16 +4,24 @@ import android.app.Application
 import com.binzeefox.kt_foxframe.core.FoxCore
 
 /**
- * 自定义Application
- * @author binze
- * 2020/6/10 11:53
+ * Application基类
+ *
+ * @author 狐彻
+ * 2020/09/25 9:23
  */
-abstract class FoxApplication: Application() {
-    //使用的核心实例
-    private companion object var core: FoxCore? = null
-
-    open override fun onCreate() {
+open class FoxApplication: Application() {
+    override fun onCreate() {
         super.onCreate()
-        core = FoxCore.init(this)
+        FoxCore.init(this)
+        FoxCore.instance.authority = authority()
+    }
+
+    /**
+     * 获取provider所需authority，继承类可重写以自定义
+     *
+     * @author 狐彻 2020/09/25 9:56
+     */
+    open fun authority(): String{
+        return "${packageName}.authority"
     }
 }

@@ -1,97 +1,124 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package com.binzeefox.kt_foxframe.core
 
 import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
-import com.binzeefox.kt_foxframe.core.tools.DataHolder
+import androidx.appcompat.app.AppCompatActivity
+import java.lang.RuntimeException
+import java.util.*
+
 
 /**
- * 框架核心
- * @author binze
- * 2020/6/10 10:36
+ * 核心类
+ *
+ * @author 狐彻
+ * 2020/09/25 9:22
  */
-class FoxCore private constructor() {
-    companion object {  //静态池
+class FoxCore {
+
+    // 静态池
+    // @author 狐彻 2020/09/25 9:02
+    companion object {
         private const val TAG = "FoxCore"
-        private var instance: FoxCore? = null
-            get() {
-                if (field == null)
-                    field = FoxCore()
-                return field
+
+        // 双重锁单例
+        // @author 狐彻 2020/09/25 9:02
+        val instance: FoxCore   //单例
+                by lazy(mode = LazyThreadSafetyMode.SYNCHRONIZED)
+                { FoxCore() }
+
+        // Application实例
+        // @author 狐彻 2020/09/25 9:02
+        lateinit var application: Application
+
+        /**
+         * 初始化函数
+         *
+         * @author 狐彻 2020/09/25 8:53
+         */
+        fun init(application: Application) {
+            this.application = application
+        }
+    }
+
+    // Package信息
+    // @author 狐彻 2020/09/25 9:02
+    val packageInfo: PackageInfo get() {
+            return try {
+                val manager = application.packageManager
+                manager.getPackageInfo(application.packageName, 0)
+            } catch (e: PackageManager.NameNotFoundException) {
+                throw RuntimeException("获取PackageInfo失败")
             }
-        
-        private var mApp: Application? = null   //Application实例
-
-        /**
-         * 初始化
-         * @author binze 2020/6/10 10:36
-         */
-        fun init(application: Application): FoxCore{
-            this.mApp = application
-            return instance!!
         }
 
-        /**
-         * 获取实例
-         * @author binze 2020/6/10 10:36
-         */
-        fun get(): FoxCore{
-            mApp?:throw IllegalAccessException("should call init(Application) first!!!")
-            return instance!!
-        }
-        
-        /**
-         * 获取application实例
-         * @author binze 2020/6/10 10:51
-         */
-        val application: Application? get() = mApp!!
-    }
-
-    /**
-     * Package信息
-     * @author binze 2020/6/10 11:28
-     */
-    val packageInfo: PackageInfo? get() {
-        return try {
-            val manager = mApp!!.packageManager
-            manager.getPackageInfo(mApp!!.packageName, 0)
-        } catch (e: PackageManager.NameNotFoundException){
-            Log.e(TAG, "getPackageInfo: 获取失败", e)
-            null
-        }
-    }
-
-    /**
-     * 版本名
-     * @author binze 2020/6/10 11:31
-     */
+    // 版本名
+    // @author 狐彻 2020/09/25 9:03
     val versionName: String get() {
-        val info = packageInfo
-        return info?.versionName?: ""
-    }
-
-    /**
-     * 版本号
-     * @author binze 2020/6/10 11:39
-     */
-    val versionCode: Long get() {
-        val  info = packageInfo
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-            info?.longVersionCode?: -1
-        else (info?.versionCode?: -1).toLong()
-    }
-
-
-    /**
-     * 全局数据
-     * @author binze 2020/6/10 11:43
-     */
-    var globalData: DataHolder? = null
-        get() {
-            if (field == null) field = DataHolder()
-            return field
+            val info = packageInfo
+            return info.versionName ?: ""
         }
 
+    // 版本号
+    // @author 狐彻 2020/09/25 9:03
+    val versionCode: Long get() {
+            val info = packageInfo
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
+                info.longVersionCode
+            else (info.versionCode).toLong()
+        }
+
+    // 内容提供者Authority，默认为包名加.authority
+    // @author 狐彻 2020/09/25 9:49
+    var authority: String = "${packageInfo.packageName}.authority"
+
+    ///////////////////////////////////////////////////////////////////////////
+    // 返回栈
+    ///////////////////////////////////////////////////////////////////////////
+
+    // 返回栈
+    // @author 狐彻 2020/09/25 9:05
+    val activityStack = ActivityStack()
+
+    // 返回栈顶部
+    // @author 狐彻 2020/09/25 9:06
+    val topActivity: AppCompatActivity get() = activityStack.peek()
+
+    ///////////////////////////////////////////////////////////////////////////
+    // 内部类
+    ///////////////////////////////////////////////////////////////////////////
+
+    /**
+     * 返回栈
+     *
+     * @author 狐彻 2020/09/25 9:13
+     */
+    class ActivityStack: Stack<AppCompatActivity>() {
+
+        /**
+         * 杀死顶部Activity
+         *
+         * @author 狐彻 2020/09/25 9:14
+         */
+        fun kill() = pop().finish()
+
+        /**
+         * 杀死一定数量的Activity
+         *
+         * @author 狐彻 2020/09/25 9:19
+         */
+        fun kill(count: Int) {
+            for (i in 0 .. count) kill()
+        }
+
+        /**
+         * 杀死所有Activity
+         *
+         * @author 狐彻 2020/09/25 9:20
+         */
+        fun killAll() = kill(count() - 1)
+    }
 }
