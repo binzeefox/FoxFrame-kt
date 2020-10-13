@@ -3,6 +3,7 @@
 package com.binzeefox.kt_foxframe.core
 
 import android.app.Application
+import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -39,8 +40,8 @@ class FoxCore {
          *
          * @author 狐彻 2020/09/25 8:53
          */
-        fun init(application: Application) {
-            this.application = application
+        fun init(ctx: Context) {
+            this.application = ctx.applicationContext as Application
         }
     }
 

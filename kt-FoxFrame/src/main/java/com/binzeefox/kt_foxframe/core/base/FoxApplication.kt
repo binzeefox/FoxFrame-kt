@@ -12,7 +12,8 @@ import com.binzeefox.kt_foxframe.core.FoxCore
 open class FoxApplication: Application() {
     override fun onCreate() {
         super.onCreate()
-        FoxCore.init(this)
+        //改用App Startup
+//        FoxCore.init(this)
         FoxCore.instance.authority = authority()
     }
 

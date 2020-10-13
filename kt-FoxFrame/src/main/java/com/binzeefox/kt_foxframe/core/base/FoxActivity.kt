@@ -13,7 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.binzeefox.kt_foxframe.core.FoxCore
 import com.binzeefox.kt_foxframe.tools.navigate.Navigator
 import com.binzeefox.kt_foxframe.tools.perform.LayoutTool
-import com.binzeefox.kt_foxframe.tools.utils.RxUtil.Companion.setThreadComputation
+import com.binzeefox.kt_foxframe.tools.utils.RxUtil.setThreadComputation
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.disposables.Disposable
